@@ -1,0 +1,39 @@
+/*
+   * ReaScript Name: Select all notes with given velocity
+   * EEL script for Cockos REAPER
+   * Author: Jim Avery (The Sound Defense)
+*/
+
+GetUserInputs("Select all notes with given velocity", 1, "Velocity", #vel_csv);
+match("%i", #vel_csv, target_velocity);
+
+// Get the current take.
+take = MIDIEditor_GetTake(MIDIEditor_GetActive());
+
+// Get the track and media item.
+track = GetMediaItemTake_Track(take);
+item = GetMediaItemTake_Item(take);
+
+// Count the number of total notes.
+num_evts = MIDI_CountEvts(take, note_count, ccevt_count, textsysexevt_count);
+
+Undo_BeginBlock();
+// De-select everything.
+MIDI_SelectAll(take, 0);
+
+// Select all notes.
+note_idx = 0;
+while (note_idx < note_count) (
+  note = MIDI_GetNote(take, note_idx, selected, muted, startpos, endpos, chan, pitch, vel);
+  (target_velocity == vel) ? (
+    MIDI_SetNote(take, note_idx, 1, muted, startpos, endpos, chan, pitch, vel, 1);
+  );
+  note_idx = note_idx + 1;
+);
+
+// Sort all events.
+MIDI_Sort(take);
+
+MarkTrackItemsDirty(track, item);
+Undo_EndBlock("Select all notes with given velocity", -1);
+
