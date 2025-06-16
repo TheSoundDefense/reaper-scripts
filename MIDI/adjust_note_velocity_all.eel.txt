@@ -1,0 +1,49 @@
+/*
+   * ReaScript Name: Adjust velocity of all notes in all MIDI tracks
+   * EEL script for Cockos REAPER
+   * Author: Jim Avery (The Sound Defense)
+*/
+
+GetUserInputs("Adjust note velocity", 1, "\% of original velocity", #vel_csv);
+match("%d", #vel_csv, velocity_scale);
+velocity_scale = velocity_scale / 100;
+
+// Get the number of media items.
+num_items = CountMediaItems(0);
+item_idx = 0;
+
+Undo_BeginBlock();
+// Main loop. Loop over all media items.
+while (item_idx < num_items) (
+  // Get the item and track.
+  item = GetMediaItem(0, item_idx);
+  take = GetMediaItemTake(item, 0);
+  track = GetMediaItemTrack(item);
+  
+  // Count all notes.
+  num_evts = MIDI_CountEvts(take, note_count, ccevt_count, textsyxevt_count);
+  
+  // Get the first note.
+  note_idx = 0;
+  
+  // Inner loop.
+  note_changed = 0;
+  while (note_idx < note_count) (
+    // Get the current note.
+    note = MIDI_GetNote(take, note_idx, selected, muted, startpos, endpos, chan, pitch, vel);
+    
+    // Set it again with new velocity.
+    new_vel = vel * velocity_scale;
+    MIDI_SetNote(take, note_idx, selected, muted, startpos, endpos, chan, pitch, new_vel, 1);
+    note_changed = 1;
+    
+    // Get the next selected note.
+    note_idx += 1;
+  );
+  (note_changed > 0) ? (
+    MIDI_Sort(take);
+    MarkTrackItemsDirty(track, item);
+  );
+  item_idx += 1;
+);
+Undo_EndBlock("Adjust note velocity for all MIDI notes on all tracks", -1);
